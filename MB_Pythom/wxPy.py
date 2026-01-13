@@ -125,8 +125,11 @@ def click_Exit():
 btnPusk = ttk.Button(text="Пуск", command=click_Pusk)
 btnPusk.place(x=50, y=320)
 
+btnExport = ttk.Button(text="экспорт")
+btnExport.place(x=140, y=320)
+
 btnExit = ttk.Button(text="Выход", command=click_Exit)
-btnExit.place(x=170, y=320)
+btnExit.place(x=250, y=320)
 
 icon = PhotoImage(file = "Save32.png")
 root.iconphoto(False, icon)
@@ -151,4 +154,3 @@ root.update()     # обновляем информацию о виджетах
 root.protocol("WM_DELETE_WINDOW", click_Exit)
 
 root.mainloop()
-
