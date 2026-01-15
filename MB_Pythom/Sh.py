@@ -7,7 +7,7 @@ import sys
 import os
 import time
 # import shutil
-from openpyxl import load_workbook
+from openpyxl import load_workbook, Workbook
 
 import pyModbusTCP
 from pyModbusTCP.client import ModbusClient
@@ -93,3 +93,117 @@ def sendCmdBlock(tabFile, rowSt, rowCnt, colSt, maxCmdInRow):
     else:
         print(f"Нет Файла {file_path}")
     return cmdText_l
+
+
+CHANNEL_TYPE_MAP = {
+    0x30: "КТВ",
+    0x31: "циф.вх. (D_In)",
+    0x32: "реле (R_Out)",
+    0x33: "интерком",
+    0x34: "аналог.вх. (A_In)",
+    0x35: "концевой (TEU)",
+}
+
+MODE_MAP = {
+    0x0: "НО",
+    0x1: "НЗ",
+    0x2: "РО",
+    0x3: "РЗ",
+}
+
+PHYSICS_MAP = {
+    0x0: "кнопочный датчик",
+    0x1: "модульное расширение",
+    0x2: "программное расширение",
+    0x11: "цифровой вход трансформаторная развязка",
+    0x12: "физика типа Намур",
+    0x13: "резистивный делитель на входе",
+    0x1F: "неопределенность на входе",
+    0x21: "аналоговый вход, датчик скорости",
+    0x22: "аналоговый вход, термодатчик",
+    0x23: "аналоговый вход, токовый датчик",
+    0x24: "аналоговый вход, датчик напряжения",
+    0x2F: "неопределенность на аналоговый вход",
+    0x31: "выход, сухой контакт",
+    0x32: "выход, оптронная развязка",
+    0x33: "выход, быстрый ключ, полевик",
+    0x3F: "неопределенность на выход",
+}
+
+
+def _format_hex(value):
+    return f"0x{value:02X}"
+
+
+def _map_value(value, mapping):
+    return _format_hex(value), mapping.get(value, "Неизвестно")
+
+
+def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callback=None):
+    if not filename.lower().endswith(".xlsx"):
+        filename = f"{filename}.xlsx"
+
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Экспорт"
+    sheet.append([
+        "Пост",
+        "Канал",
+        "Тип канала (hex)",
+        "Тип канала",
+        "Адрес канала (hex)",
+        "Режим канала (hex)",
+        "Режим канала",
+        "Тип физики (hex)",
+        "Тип физики",
+        "Статус",
+    ])
+
+    client = ModbusClient(
+        host=scan_ip,
+        port=502,
+        unit_id=scan_id,
+        timeout=0.5,
+        auto_open=True,
+    )
+
+    for post_index in range(1, post_count + 1):
+        register_start = 10500 + post_index
+        registers = client.read_holding_registers(register_start, 24)
+        if registers is None:
+            if output_callback:
+                output_callback(f"Пост {post_index}: нет ответа")
+            sheet.append([post_index, "", "", "", "", "", "", "", "", "Нет ответа"])
+            continue
+
+        raw_bytes = []
+        for register in registers:
+            raw_bytes.append(register & 0xFF)
+            raw_bytes.append((register >> 8) & 0xFF)
+
+        for channel_index in range(1, 13):
+            offset = (channel_index - 1) * 4
+            channel_bytes = raw_bytes[offset:offset + 4]
+            if len(channel_bytes) < 4:
+                break
+
+            type_code, type_label = _map_value(channel_bytes[0], CHANNEL_TYPE_MAP)
+            mode_code, mode_label = _map_value(channel_bytes[2], MODE_MAP)
+            physics_code, physics_label = _map_value(channel_bytes[3], PHYSICS_MAP)
+
+            sheet.append([
+                post_index,
+                channel_index,
+                type_code,
+                type_label,
+                _format_hex(channel_bytes[1]),
+                mode_code,
+                mode_label,
+                physics_code,
+                physics_label,
+                "OK",
+            ])
+
+    client.close()
+    workbook.save(filename)
+    return filename
