@@ -8,6 +8,7 @@ import os
 import time
 # import shutil
 from openpyxl import load_workbook, Workbook
+from openpyxl.styles import Alignment, Font, PatternFill
 
 import pyModbusTCP
 from pyModbusTCP.client import ModbusClient
@@ -135,6 +136,12 @@ def _format_hex(value):
     return f"0x{value:02X}"
 
 
+def _format_hex_with_optional_not_set(value):
+    if value == 0xFF:
+        return "0xFF(не задано)"
+    return _format_hex(value)
+
+
 def _map_value(value, mapping):
     return _format_hex(value), mapping.get(value, "Неизвестно")
 
@@ -146,7 +153,7 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "Экспорт"
-    sheet.append([
+    header_row = [
         "Пост",
         "Канал",
         "Тип канала (hex)",
@@ -157,7 +164,20 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
         "Тип физики (hex)",
         "Тип физики",
         "Статус",
-    ])
+    ]
+    sheet.append(header_row)
+    sheet.freeze_panes = "A2"
+    header_fill = PatternFill("solid", fgColor="D9D9D9")
+    header_font = Font(bold=True)
+    for cell in sheet[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+
+    post_fills = [
+        PatternFill("solid", fgColor="E8F1FF"),
+        PatternFill("solid", fgColor="E9F7EF"),
+    ]
 
     client = ModbusClient(
         host=scan_ip,
@@ -174,6 +194,12 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
             if output_callback:
                 output_callback(f"Пост {post_index}: нет ответа")
             sheet.append([post_index, "", "", "", "", "", "", "", "", "Нет ответа"])
+            data_row = sheet.max_row
+            row_fill = post_fills[(post_index - 1) % len(post_fills)]
+            for cell in sheet[data_row]:
+                cell.fill = row_fill
+                if post_index % 2 == 0 and cell.column > 1:
+                    cell.alignment = Alignment(indent=1)
             continue
 
         raw_bytes = []
@@ -187,22 +213,57 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
             if len(channel_bytes) < 4:
                 break
 
-            type_code, type_label = _map_value(channel_bytes[0], CHANNEL_TYPE_MAP)
-            mode_code, mode_label = _map_value(channel_bytes[2], MODE_MAP)
-            physics_code, physics_label = _map_value(channel_bytes[3], PHYSICS_MAP)
+            if channel_bytes[0] == 0x00:
+                row_data = [
+                    post_index,
+                    channel_index,
+                    "нет связи",
+                    "нет связи",
+                    "нет связи",
+                    "нет связи",
+                    "нет связи",
+                    "нет связи",
+                    "нет связи",
+                    "нет связи",
+                ]
+            else:
+                type_code, type_label = _map_value(channel_bytes[0], CHANNEL_TYPE_MAP)
+                mode_code, mode_label = _map_value(channel_bytes[2], MODE_MAP)
+                physics_code, physics_label = _map_value(channel_bytes[3], PHYSICS_MAP)
+                mode_hex = _format_hex(channel_bytes[2])
 
-            sheet.append([
-                post_index,
-                channel_index,
-                type_code,
-                type_label,
-                _format_hex(channel_bytes[1]),
-                mode_code,
-                mode_label,
-                physics_code,
-                physics_label,
-                "OK",
-            ])
+                if channel_bytes[0] == 0x30:
+                    mode_code = f"{mode_hex} Адрес КТВ"
+                    mode_label = f"Адрес КТВ = {mode_hex}"
+                elif channel_bytes[0] == 0x35:
+                    mode_hex = _format_hex_with_optional_not_set(channel_bytes[2])
+                    mode_code = f"{mode_hex} Номер ПГС"
+                    mode_label = f"Номер ПГС = {mode_hex}"
+                elif channel_bytes[0] == 0x34:
+                    adjusted_value = channel_bytes[2] - 127
+                    mode_code = f"{adjusted_value} Уст. 0"
+                    mode_label = f"Уст. 0 = {adjusted_value}"
+
+                row_data = [
+                    post_index,
+                    channel_index,
+                    type_code,
+                    type_label,
+                    _format_hex(channel_bytes[1]),
+                    mode_code,
+                    mode_label,
+                    physics_code,
+                    physics_label,
+                    "OK",
+                ]
+
+            sheet.append(row_data)
+            data_row = sheet.max_row
+            row_fill = post_fills[(post_index - 1) % len(post_fills)]
+            for cell in sheet[data_row]:
+                cell.fill = row_fill
+                if post_index % 2 == 0 and cell.column > 1:
+                    cell.alignment = Alignment(indent=1)
 
     client.close()
     workbook.save(filename)
