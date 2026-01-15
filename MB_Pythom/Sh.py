@@ -96,6 +96,7 @@ def sendCmdBlock(tabFile, rowSt, rowCnt, colSt, maxCmdInRow):
     return cmdText_l
 
 
+# === Добавлено: карты соответствий для экспорта в Excel ===
 CHANNEL_TYPE_MAP = {
     0x30: "КТВ",
     0x31: "циф.вх. (D_In)",
@@ -132,6 +133,7 @@ PHYSICS_MAP = {
 }
 
 
+# === Добавлено: вспомогательные функции форматирования для экспорта ===
 def _format_hex(value):
     return f"0x{value:02X}"
 
@@ -144,8 +146,10 @@ def _format_hex_with_optional_not_set(value):
 
 def _map_value(value, mapping):
     return _format_hex(value), mapping.get(value, "Неизвестно")
+# === Конец добавления: вспомогательные функции форматирования для экспорта ===
 
 
+# === Добавлено: экспорт постов в Excel ===
 def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callback=None):
     if not filename.lower().endswith(".xlsx"):
         filename = f"{filename}.xlsx"
@@ -291,3 +295,4 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
     client.close()
     workbook.save(filename)
     return filename
+# === Конец добавления: экспорт постов в Excel ===

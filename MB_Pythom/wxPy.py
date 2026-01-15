@@ -15,8 +15,10 @@ colSt = 7
 maxCmdInRow = 6
 text_CmdBlk = ""
 
+# === Добавлено: параметры экспорта ===
 export_post_count = 10
 export_filename = "registers_pgs"
+# === Конец добавления: параметры экспорта ===
 
 pos_left = 30
 scan_pos_top = 10
@@ -127,6 +129,7 @@ def click_Exit():
     print("Конец сеанса")
 
 
+# === Добавлено: диалог экспорта в Excel ===
 def open_export_dialog():
     dialog = Toplevel(root)
     dialog.title("Экспорт")
@@ -203,13 +206,16 @@ def open_export_dialog():
     btnBack.place(x=20, y=120, width=140)
 
     entryCount.focus()
+# === Конец добавления: диалог экспорта в Excel ===
 
 # btnPusk = ttk.Button(text="Click Me", state=["disabled"])
 btnPusk = ttk.Button(text="Пуск", command=click_Pusk)
 btnPusk.place(x=50, y=320)
 
+# === Добавлено: кнопка экспорта ===
 btnExport = ttk.Button(text="Экспорт", command=open_export_dialog)
 btnExport.place(x=140, y=320)
+# === Конец добавления: кнопка экспорта ===
 
 btnExit = ttk.Button(text="Выход", command=click_Exit)
 btnExit.place(x=250, y=320)
