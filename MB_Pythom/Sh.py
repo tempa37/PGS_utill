@@ -8,7 +8,7 @@ import os
 import time
 # import shutil
 from openpyxl import load_workbook, Workbook
-from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
 import pyModbusTCP
 from pyModbusTCP.client import ModbusClient
@@ -169,10 +169,31 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
     sheet.freeze_panes = "A2"
     header_fill = PatternFill("solid", fgColor="D9D9D9")
     header_font = Font(bold=True)
+    border_side = Side(style="thin", color="000000")
+    cell_border = Border(
+        left=border_side,
+        right=border_side,
+        top=border_side,
+        bottom=border_side,
+    )
     for cell in sheet[1]:
         cell.fill = header_fill
         cell.font = header_font
         cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.border = cell_border
+
+    column_widths = {
+        "C": 10,
+        "D": 16,
+        "E": 12,
+        "F": 25,
+        "G": 26,
+        "H": 12,
+        "I": 42,
+        "J": 15,
+    }
+    for column, width in column_widths.items():
+        sheet.column_dimensions[column].width = width
 
     post_fills = [
         PatternFill("solid", fgColor="E8F1FF"),
@@ -200,6 +221,7 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
                 cell.fill = row_fill
                 if post_index % 2 == 0 and cell.column > 1:
                     cell.alignment = Alignment(indent=1)
+                cell.border = cell_border
             continue
 
         raw_bytes = []
@@ -264,6 +286,7 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
                 cell.fill = row_fill
                 if post_index % 2 == 0 and cell.column > 1:
                     cell.alignment = Alignment(indent=1)
+                cell.border = cell_border
 
     client.close()
     workbook.save(filename)
