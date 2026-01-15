@@ -179,10 +179,10 @@ def open_export_dialog():
     lblExtension.place(x=315, y=60)
 
     btnExportAction = ttk.Button(dialog, text="Экспортировать", command=save_export_settings)
-    btnExportAction.place(x=20, y=120, width=140)
+    btnExportAction.place(x=200, y=120, width=120)
 
     btnBack = ttk.Button(dialog, text="Назад", command=close_dialog)
-    btnBack.place(x=200, y=120, width=120)
+    btnBack.place(x=20, y=120, width=140)
 
     entryCount.focus()
 
