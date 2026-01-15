@@ -2,7 +2,7 @@ from tkinter import *
 from tkinter import ttk
 from tkinter import scrolledtext  
 import Sh
-from Sh import sendCmdBlock
+from Sh import sendCmdBlock, export_posts_to_excel
 
 # Параметры для файла Sh.py
 scanIP = "192.168.70.33"
@@ -156,7 +156,25 @@ def open_export_dialog():
         export_post_count = count_int
         export_filename = filename_var.get().strip() or "registers_pgs"
 
-        # Заглушка: сохранение параметров экспорта для дальнейшей логики.
+        scan_ip_value = entryIP.get().strip() or scanIP
+        scan_id_value = entryID.get().strip()
+        if scan_id_value.isdigit():
+            scan_id_value = int(scan_id_value)
+        else:
+            scan_id_value = scanId
+
+        textResult.insert(END, "Экспорт данных...\n")
+        root.update()
+        exported_file = export_posts_to_excel(
+            export_post_count,
+            export_filename,
+            scan_ip_value,
+            scan_id_value,
+            output_callback=cmdUpdate,
+        )
+        textResult.insert(END, f"Экспорт завершен: {exported_file}\n")
+        root.update()
+
         dialog.destroy()
 
     def close_dialog():
