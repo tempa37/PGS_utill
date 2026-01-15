@@ -183,12 +183,12 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
         cell.border = cell_border
 
     column_widths = {
-        "C": 10,
+        "C": 15,
         "D": 16,
-        "E": 12,
-        "F": 25,
+        "E": 19,
+        "F": 26,
         "G": 26,
-        "H": 12,
+        "H": 17,
         "I": 42,
         "J": 15,
     }
