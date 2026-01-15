@@ -15,6 +15,9 @@ colSt = 7
 maxCmdInRow = 6
 text_CmdBlk = ""
 
+export_post_count = 10
+export_filename = "registers_pgs"
+
 pos_left = 30
 scan_pos_top = 10
 pos_step = 26
@@ -123,11 +126,71 @@ def click_Exit():
     root.destroy()  # ручное закрытие окна и всего приложения
     print("Конец сеанса")
 
+
+def open_export_dialog():
+    dialog = Toplevel(root)
+    dialog.title("Экспорт")
+    dialog.geometry("360x190+450+250")
+    dialog.resizable(False, False)
+    dialog.transient(root)
+    dialog.grab_set()
+
+    count_var = StringVar(value="10")
+    filename_var = StringVar(value="registers_pgs")
+
+    def validate_count(value):
+        return value.isdigit() or value == ""
+
+    def save_export_settings():
+        global export_post_count, export_filename
+
+        count_value = count_var.get()
+        if not count_value.isdigit():
+            count_value = "10"
+        count_int = int(count_value)
+        if count_int > 50:
+            count_int = 50
+        if count_int < 1:
+            count_int = 1
+
+        export_post_count = count_int
+        export_filename = filename_var.get().strip() or "registers_pgs"
+
+        # Заглушка: сохранение параметров экспорта для дальнейшей логики.
+        dialog.destroy()
+
+    def close_dialog():
+        dialog.destroy()
+
+    lblCount = Label(dialog, text="Количество постов:")
+    lblCount.place(x=20, y=20)
+
+    count_validate = (dialog.register(validate_count), "%P")
+    entryCount = ttk.Entry(dialog, textvariable=count_var, validate="key", validatecommand=count_validate)
+    entryCount.place(x=190, y=20, width=60)
+
+    lblFilename = Label(dialog, text="Название файла:")
+    lblFilename.place(x=20, y=60)
+
+    entryFilename = ttk.Entry(dialog, textvariable=filename_var)
+    entryFilename.place(x=190, y=60, width=120)
+
+    lblExtension = Label(dialog, text=".xlsx")
+    lblExtension.place(x=315, y=60)
+
+    btnExportAction = ttk.Button(dialog, text="Экспортировать", command=save_export_settings)
+    btnExportAction.place(x=20, y=120, width=140)
+
+    btnBack = ttk.Button(dialog, text="Назад", command=close_dialog)
+    btnBack.place(x=200, y=120, width=120)
+
+    entryCount.focus()
+
 # btnPusk = ttk.Button(text="Click Me", state=["disabled"])
 btnPusk = ttk.Button(text="Пуск", command=click_Pusk)
 btnPusk.place(x=50, y=320)
 
-btnExport = ttk.Button(text="экспорт")
+btnExport = ttk.Button(text="Экспорт", command=open_export_dialog)
 btnExport.place(x=140, y=320)
 
 btnExit = ttk.Button(text="Выход", command=click_Exit)
