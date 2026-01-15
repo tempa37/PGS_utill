@@ -178,8 +178,8 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
 
         raw_bytes = []
         for register in registers:
-            raw_bytes.append((register >> 8) & 0xFF)
             raw_bytes.append(register & 0xFF)
+            raw_bytes.append((register >> 8) & 0xFF)
 
         for channel_index in range(1, 13):
             offset = (channel_index - 1) * 4
