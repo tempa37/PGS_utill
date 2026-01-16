@@ -187,8 +187,7 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
             row_fill = post_fills[(post_index - 1) % len(post_fills)]
             for cell in sheet[data_row]:
                 cell.fill = row_fill
-                if post_index % 2 == 0 and cell.column > 1:
-                    cell.alignment = Alignment(indent=1)
+                cell.alignment = Alignment(horizontal="center", vertical="center")
                 cell.border = cell_border
             continue
 
@@ -236,8 +235,7 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
             row_fill = post_fills[(post_index - 1) % len(post_fills)]
             for cell in sheet[data_row]:
                 cell.fill = row_fill
-                if post_index % 2 == 0 and cell.column > 1:
-                    cell.alignment = Alignment(indent=1)
+                cell.alignment = Alignment(horizontal="center", vertical="center")
                 cell.border = cell_border
 
     client.close()
