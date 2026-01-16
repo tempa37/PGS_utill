@@ -227,7 +227,7 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
                 row_data = [
                     f"{post_index}/{channel_index}",
                     type_label,
-                    str(channel_bytes[1]),
+                    channel_bytes[1],
                     mode_label,
                 ]
 
