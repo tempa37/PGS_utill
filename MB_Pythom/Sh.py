@@ -239,7 +239,7 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
                         mode_label = "-"
                         address_value = "-"
                     else:
-                        mode_label = str(channel_bytes[2])
+                        mode_label = channel_bytes[2]
                 elif channel_bytes[0] == 0x34:
                     adjusted_value = channel_bytes[2] - 127
                     mode_label = f"0 = {adjusted_value}"
