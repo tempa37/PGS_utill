@@ -131,13 +131,7 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = "Экспорт"
-    header_row = [
-        "Пост",
-        "Тип",
-        "Адрес",
-        "Режим",
-    ]
-    sheet.append(header_row)
+    header_row = ["Пост", "Тип", "Адрес", "Режим"]
     sheet.freeze_panes = "A2"
     header_fill = PatternFill("solid", fgColor="D9D9D9")
     header_font = Font(bold=True)
@@ -148,25 +142,43 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
         top=border_side,
         bottom=border_side,
     )
-    for cell in sheet[1]:
-        cell.fill = header_fill
-        cell.font = header_font
-        cell.alignment = Alignment(horizontal="center", vertical="center")
-        cell.border = cell_border
+
+    posts_per_row = 5
+    columns_per_post = 4
+    spacer_columns = 1
+    max_columns = (posts_per_row * columns_per_post) + ((posts_per_row - 1) * spacer_columns)
 
     column_widths = {
-        "A": 10,
-        "B": 10,
-        "C": 10,
-        "D": 12,
+        1: 10,
+        2: 10,
+        3: 10,
+        4: 12,
     }
-    for column, width in column_widths.items():
-        sheet.column_dimensions[column].width = width
+    for post_index in range(posts_per_row):
+        base_column = (post_index * (columns_per_post + spacer_columns)) + 1
+        for offset, width in column_widths.items():
+            sheet.column_dimensions[chr(64 + base_column + offset - 1)].width = width
+        spacer_column = base_column + columns_per_post
+        if post_index < posts_per_row - 1:
+            sheet.column_dimensions[chr(64 + spacer_column)].width = 2
 
     post_fills = [
         PatternFill("solid", fgColor="E8F1FF"),
         PatternFill("solid", fgColor="E9F7EF"),
     ]
+
+    def _write_cell(row, column, value, fill=None, font=None):
+        cell = sheet.cell(row=row, column=column, value=value)
+        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.border = cell_border
+        if fill:
+            cell.fill = fill
+        if font:
+            cell.font = font
+        return cell
+
+    def _write_spacer_cell(row, column):
+        return _write_cell(row, column, None, fill=PatternFill("solid", fgColor="FFFFFF"))
 
     client = ModbusClient(
         host=scan_ip,
@@ -176,44 +188,20 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
         auto_open=True,
     )
 
-    for post_index in range(1, post_count + 1):
-        sheet.append([f"Пост {post_index}", "", "", ""])
-        data_row = sheet.max_row
-        row_fill = post_fills[(post_index - 1) % len(post_fills)]
-        for cell in sheet[data_row]:
-            cell.fill = row_fill
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-            cell.border = cell_border
-
+    def _get_post_rows(post_index):
         register_start = 10500 + post_index
         registers = client.read_holding_registers(register_start, 24)
         if registers is None:
             if output_callback:
                 output_callback(f"Пост {post_index}: нет ответа")
-
-            sheet.append(["", "-", "-", "Нет ответа"])
-
-            data_row = sheet.max_row
-            row_fill = post_fills[(post_index - 1) % len(post_fills)]
-            for cell in sheet[data_row]:
-                cell.fill = row_fill
-                cell.alignment = Alignment(horizontal="center", vertical="center")
-                cell.border = cell_border
-
-            sheet.append(["", "", "", ""])
-            data_row = sheet.max_row
-            white_fill = PatternFill("solid", fgColor="FFFFFF")
-            for cell in sheet[data_row]:
-                cell.fill = white_fill
-                cell.alignment = Alignment(horizontal="center", vertical="center")
-                cell.border = cell_border
-            continue
+            return [["", "-", "-", "Нет ответа"]] + [["", "-", "-", "-"] for _ in range(11)]
 
         raw_bytes = []
         for register in registers:
             raw_bytes.append(register & 0xFF)
             raw_bytes.append((register >> 8) & 0xFF)
 
+        rows = []
         for channel_index in range(1, 13):
             offset = (channel_index - 1) * 4
             channel_bytes = raw_bytes[offset:offset + 4]
@@ -221,12 +209,7 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
                 break
 
             if channel_bytes[0] == 0x00:
-                row_data = [
-                    "",
-                    "-",
-                    "-",
-                    "-",
-                ]
+                row_data = ["", "-", "-", "-"]
             else:
                 type_label = _map_value(channel_bytes[0], CHANNEL_TYPE_MAP)
                 mode_label = _map_value(channel_bytes[2], MODE_MAP)
@@ -244,28 +227,55 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
                     adjusted_value = channel_bytes[2] - 127
                     mode_label = f"0 = {adjusted_value}"
 
-                row_data = [
-                    "",
-                    type_label,
-                    address_value,
-                    mode_label,
-                ]
+                row_data = ["", type_label, address_value, mode_label]
+            rows.append(row_data)
 
-            sheet.append(row_data)
-            data_row = sheet.max_row
+        while len(rows) < 12:
+            rows.append(["", "-", "-", "-"])
+        return rows
+
+    current_row = 1
+    for block_start in range(1, post_count + 1, posts_per_row):
+        posts_in_block = min(posts_per_row, post_count - block_start + 1)
+
+        for index in range(posts_in_block):
+            col_start = 1 + index * (columns_per_post + spacer_columns)
+            for offset, value in enumerate(header_row):
+                _write_cell(current_row, col_start + offset, value, fill=header_fill, font=header_font)
+            if index < posts_in_block - 1:
+                _write_spacer_cell(current_row, col_start + columns_per_post)
+        current_row += 1
+
+        for index in range(posts_in_block):
+            post_index = block_start + index
+            col_start = 1 + index * (columns_per_post + spacer_columns)
             row_fill = post_fills[(post_index - 1) % len(post_fills)]
-            for cell in sheet[data_row]:
-                cell.fill = row_fill
-                cell.alignment = Alignment(horizontal="center", vertical="center")
-                cell.border = cell_border
+            _write_cell(current_row, col_start, f"Пост {post_index}", fill=row_fill)
+            for offset in range(1, columns_per_post):
+                _write_cell(current_row, col_start + offset, "", fill=row_fill)
+            if index < posts_in_block - 1:
+                _write_spacer_cell(current_row, col_start + columns_per_post)
+        current_row += 1
 
-        sheet.append(["", "", "", ""])
-        data_row = sheet.max_row
-        white_fill = PatternFill("solid", fgColor="FFFFFF")
-        for cell in sheet[data_row]:
-            cell.fill = white_fill
-            cell.alignment = Alignment(horizontal="center", vertical="center")
-            cell.border = cell_border
+        post_rows = [_get_post_rows(block_start + index) for index in range(posts_in_block)]
+        for row_index in range(12):
+            for index in range(posts_in_block):
+                post_index = block_start + index
+                col_start = 1 + index * (columns_per_post + spacer_columns)
+                row_fill = post_fills[(post_index - 1) % len(post_fills)]
+                row_data = post_rows[index][row_index]
+                for offset, value in enumerate(row_data):
+                    _write_cell(current_row, col_start + offset, value, fill=row_fill)
+                if index < posts_in_block - 1:
+                    _write_spacer_cell(current_row, col_start + columns_per_post)
+            current_row += 1
+
+        for col_index in range(1, (posts_in_block * (columns_per_post + spacer_columns))):
+            if (col_index % (columns_per_post + spacer_columns)) == 0:
+                _write_spacer_cell(current_row, col_index)
+            else:
+                _write_cell(current_row, col_index, "", fill=PatternFill("solid", fgColor="FFFFFF"))
+        current_row += 1
 
     client.close()
     workbook.save(filename)
