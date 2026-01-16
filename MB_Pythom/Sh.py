@@ -155,10 +155,10 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
         cell.border = cell_border
 
     column_widths = {
-        "A": 14,
-        "B": 16,
-        "C": 18,
-        "D": 30,
+        "A": 10,
+        "B": 10,
+        "C": 10,
+        "D": 12,
     }
     for column, width in column_widths.items():
         sheet.column_dimensions[column].width = width
