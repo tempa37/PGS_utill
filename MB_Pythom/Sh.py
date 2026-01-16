@@ -199,6 +199,14 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
                 cell.fill = row_fill
                 cell.alignment = Alignment(horizontal="center", vertical="center")
                 cell.border = cell_border
+
+            sheet.append(["", "", "", ""])
+            data_row = sheet.max_row
+            white_fill = PatternFill("solid", fgColor="FFFFFF")
+            for cell in sheet[data_row]:
+                cell.fill = white_fill
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+                cell.border = cell_border
             continue
 
         raw_bytes = []
@@ -225,18 +233,16 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
                 address_value = channel_bytes[1]
 
                 if channel_bytes[0] == 0x30:
-                    mode_hex = _format_hex(channel_bytes[2])
-                    mode_label = f"Адрес КТВ = {mode_hex}"
+                    mode_label = f"№ {channel_bytes[2]}"
                 elif channel_bytes[0] == 0x35:
                     if channel_bytes[2] == 0xFF:
                         mode_label = "-"
                         address_value = "-"
                     else:
-                        mode_hex = _format_hex(channel_bytes[2])
-                        mode_label = f"№ ПГС = {mode_hex}"
+                        mode_label = channel_bytes[2]
                 elif channel_bytes[0] == 0x34:
                     adjusted_value = channel_bytes[2] - 127
-                    mode_label = f"Уст. 0 = {adjusted_value}"
+                    mode_label = f"0 = {adjusted_value}"
 
                 row_data = [
                     "",
@@ -252,6 +258,14 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
                 cell.fill = row_fill
                 cell.alignment = Alignment(horizontal="center", vertical="center")
                 cell.border = cell_border
+
+        sheet.append(["", "", "", ""])
+        data_row = sheet.max_row
+        white_fill = PatternFill("solid", fgColor="FFFFFF")
+        for cell in sheet[data_row]:
+            cell.fill = white_fill
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.border = cell_border
 
     client.close()
     workbook.save(filename)
