@@ -99,11 +99,11 @@ def sendCmdBlock(tabFile, rowSt, rowCnt, colSt, maxCmdInRow):
 # === Добавлено: карты соответствий для экспорта в Excel ===
 CHANNEL_TYPE_MAP = {
     0x30: "КТВ",
-    0x31: "циф.вх. (D_In)",
-    0x32: "реле (R_Out)",
+    0x31: "D_in",
+    0x32: "R_Out",
     0x33: "интерком",
-    0x34: "аналог.вх. (A_In)",
-    0x35: "концевой (TEU)",
+    0x34: "A_in",
+    0x35: "TEU",
 }
 
 MODE_MAP = {
@@ -113,39 +113,13 @@ MODE_MAP = {
     0x3: "РЗ",
 }
 
-PHYSICS_MAP = {
-    0x0: "кнопочный датчик",
-    0x1: "модульное расширение",
-    0x2: "программное расширение",
-    0x11: "цифровой вход трансформаторная развязка",
-    0x12: "физика типа Намур",
-    0x13: "резистивный делитель на входе",
-    0x1F: "неопределенность на входе",
-    0x21: "аналоговый вход, датчик скорости",
-    0x22: "аналоговый вход, термодатчик",
-    0x23: "аналоговый вход, токовый датчик",
-    0x24: "аналоговый вход, датчик напряжения",
-    0x2F: "неопределенность на аналоговый вход",
-    0x31: "выход, сухой контакт",
-    0x32: "выход, оптронная развязка",
-    0x33: "выход, быстрый ключ, полевик",
-    0x3F: "неопределенность на выход",
-}
-
-
 # === Добавлено: вспомогательные функции форматирования для экспорта ===
 def _format_hex(value):
     return f"0x{value:02X}"
 
 
-def _format_hex_with_optional_not_set(value):
-    if value == 0xFF:
-        return "0xFF(не задано)"
-    return _format_hex(value)
-
-
 def _map_value(value, mapping):
-    return _format_hex(value), mapping.get(value, "Неизвестно")
+    return mapping.get(value, "Неизвестно")
 # === Конец добавления: вспомогательные функции форматирования для экспорта ===
 
 
@@ -159,15 +133,9 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
     sheet.title = "Экспорт"
     header_row = [
         "Пост",
-        "Канал",
-        "Тип канала (hex)",
-        "Тип канала",
-        "Адрес канала (hex)",
-        "Режим канала (hex)",
-        "Режим канала",
-        "Тип физики (hex)",
-        "Тип физики",
-        "Статус",
+        "Тип",
+        "Адрес",
+        "Режим",
     ]
     sheet.append(header_row)
     sheet.freeze_panes = "A2"
@@ -187,14 +155,10 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
         cell.border = cell_border
 
     column_widths = {
-        "C": 15,
-        "D": 16,
-        "E": 19,
-        "F": 26,
-        "G": 26,
-        "H": 17,
-        "I": 42,
-        "J": 15,
+        "A": 14,
+        "B": 16,
+        "C": 18,
+        "D": 30,
     }
     for column, width in column_widths.items():
         sheet.column_dimensions[column].width = width
@@ -213,18 +177,25 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
     )
 
     for post_index in range(1, post_count + 1):
+        sheet.append([f"Пост {post_index}", "", "", ""])
+        data_row = sheet.max_row
+        row_fill = post_fills[(post_index - 1) % len(post_fills)]
+        for cell in sheet[data_row]:
+            cell.fill = row_fill
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.border = cell_border
+
         register_start = 10500 + post_index
         registers = client.read_holding_registers(register_start, 24)
         if registers is None:
             if output_callback:
                 output_callback(f"Пост {post_index}: нет ответа")
-            sheet.append([post_index, "", "", "", "", "", "", "", "", "Нет ответа"])
+            sheet.append(["", "-", "-", "Нет ответа"])
             data_row = sheet.max_row
             row_fill = post_fills[(post_index - 1) % len(post_fills)]
             for cell in sheet[data_row]:
                 cell.fill = row_fill
-                if post_index % 2 == 0 and cell.column > 1:
-                    cell.alignment = Alignment(indent=1)
+                cell.alignment = Alignment(horizontal="center", vertical="center")
                 cell.border = cell_border
             continue
 
@@ -241,46 +212,35 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
 
             if channel_bytes[0] == 0x00:
                 row_data = [
-                    post_index,
-                    channel_index,
-                    "нет связи",
-                    "нет связи",
-                    "нет связи",
-                    "нет связи",
-                    "нет связи",
-                    "нет связи",
-                    "нет связи",
-                    "нет связи",
+                    "",
+                    "-",
+                    "-",
+                    "-",
                 ]
             else:
-                type_code, type_label = _map_value(channel_bytes[0], CHANNEL_TYPE_MAP)
-                mode_code, mode_label = _map_value(channel_bytes[2], MODE_MAP)
-                physics_code, physics_label = _map_value(channel_bytes[3], PHYSICS_MAP)
-                mode_hex = _format_hex(channel_bytes[2])
+                type_label = _map_value(channel_bytes[0], CHANNEL_TYPE_MAP)
+                mode_label = _map_value(channel_bytes[2], MODE_MAP)
+                address_value = channel_bytes[1]
 
                 if channel_bytes[0] == 0x30:
-                    mode_code = f"{mode_hex} Адрес КТВ"
+                    mode_hex = _format_hex(channel_bytes[2])
                     mode_label = f"Адрес КТВ = {mode_hex}"
                 elif channel_bytes[0] == 0x35:
-                    mode_hex = _format_hex_with_optional_not_set(channel_bytes[2])
-                    mode_code = f"{mode_hex} Номер ПГС"
-                    mode_label = f"Номер ПГС = {mode_hex}"
+                    if channel_bytes[2] == 0xFF:
+                        mode_label = "-"
+                        address_value = "-"
+                    else:
+                        mode_hex = _format_hex(channel_bytes[2])
+                        mode_label = f"№ ПГС = {mode_hex}"
                 elif channel_bytes[0] == 0x34:
                     adjusted_value = channel_bytes[2] - 127
-                    mode_code = f"{adjusted_value} Уст. 0"
                     mode_label = f"Уст. 0 = {adjusted_value}"
 
                 row_data = [
-                    post_index,
-                    channel_index,
-                    type_code,
+                    "",
                     type_label,
-                    _format_hex(channel_bytes[1]),
-                    mode_code,
+                    address_value,
                     mode_label,
-                    physics_code,
-                    physics_label,
-                    "OK",
                 ]
 
             sheet.append(row_data)
@@ -288,8 +248,7 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
             row_fill = post_fills[(post_index - 1) % len(post_fills)]
             for cell in sheet[data_row]:
                 cell.fill = row_fill
-                if post_index % 2 == 0 and cell.column > 1:
-                    cell.alignment = Alignment(indent=1)
+                cell.alignment = Alignment(horizontal="center", vertical="center")
                 cell.border = cell_border
 
     client.close()
