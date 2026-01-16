@@ -132,10 +132,10 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
     sheet = workbook.active
     sheet.title = "Экспорт"
     header_row = [
-        "Пост/Канал",
-        "Тип канала",
-        "Адрес канала",
-        "Режим канала",
+        "Пост",
+        "Тип",
+        "Адрес",
+        "Режим",
     ]
     sheet.append(header_row)
     sheet.freeze_panes = "A2"
@@ -177,12 +177,22 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
     )
 
     for post_index in range(1, post_count + 1):
+        sheet.append([f"Пост {post_index}", "", "", ""])
+        data_row = sheet.max_row
+        row_fill = post_fills[(post_index - 1) % len(post_fills)]
+        for cell in sheet[data_row]:
+            cell.fill = row_fill
+            cell.alignment = Alignment(horizontal="center", vertical="center")
+            cell.border = cell_border
+
         register_start = 10500 + post_index
         registers = client.read_holding_registers(register_start, 24)
         if registers is None:
             if output_callback:
                 output_callback(f"Пост {post_index}: нет ответа")
-            sheet.append([f"{post_index}/-", "-", "-", "Нет ответа"])
+
+            sheet.append(["", "-", "-", "Нет ответа"])
+
             data_row = sheet.max_row
             row_fill = post_fills[(post_index - 1) % len(post_fills)]
             for cell in sheet[data_row]:
@@ -204,7 +214,7 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
 
             if channel_bytes[0] == 0x00:
                 row_data = [
-                    f"{post_index}/{channel_index}",
+                    "",
                     "-",
                     "-",
                     "-",
@@ -212,21 +222,26 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
             else:
                 type_label = _map_value(channel_bytes[0], CHANNEL_TYPE_MAP)
                 mode_label = _map_value(channel_bytes[2], MODE_MAP)
+                address_value = channel_bytes[1]
 
                 if channel_bytes[0] == 0x30:
                     mode_hex = _format_hex(channel_bytes[2])
                     mode_label = f"Адрес КТВ = {mode_hex}"
                 elif channel_bytes[0] == 0x35:
-                    mode_hex = _format_hex(channel_bytes[2])
-                    mode_label = f"№ ПГС = {mode_hex}"
+                    if channel_bytes[2] == 0xFF:
+                        mode_label = "-"
+                        address_value = "-"
+                    else:
+                        mode_hex = _format_hex(channel_bytes[2])
+                        mode_label = f"№ ПГС = {mode_hex}"
                 elif channel_bytes[0] == 0x34:
                     adjusted_value = channel_bytes[2] - 127
                     mode_label = f"Уст. 0 = {adjusted_value}"
 
                 row_data = [
-                    f"{post_index}/{channel_index}",
+                    "",
                     type_label,
-                    channel_bytes[1],
+                    address_value,
                     mode_label,
                 ]
 
