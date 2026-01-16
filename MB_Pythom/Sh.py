@@ -190,7 +190,9 @@ def export_posts_to_excel(post_count, filename, scan_ip, scan_id, output_callbac
         if registers is None:
             if output_callback:
                 output_callback(f"Пост {post_index}: нет ответа")
+
             sheet.append(["", "-", "-", "Нет ответа"])
+
             data_row = sheet.max_row
             row_fill = post_fills[(post_index - 1) % len(post_fills)]
             for cell in sheet[data_row]:
